@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruleta de la Nave</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Impact, sans-serif;
+            margin: 0;
+            background-color: #0f1923;
+            color: white;
+            overflow: hidden;
+        }
+
+        #flash {
+            position: fixed;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Créditos inferior derecha (Fijo en toda la app) */
+        .creditos-fixed {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            z-index: 170;
+            text-align: right;
+            letter-spacing: 1px;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* --- Animaciones de Entrada --- */
+        #shutter-top, #shutter-bottom {
+            position: fixed;
+            left: 0; width: 100%; height: 50%;
+            background: #000; z-index: 150;
+            transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+        }
+        #shutter-top { top: 0; }
+        #shutter-bottom { bottom: 0; }
+
+        .abrir #shutter-top { transform: translateY(-100%); }
+        .abrir #shutter-bottom { transform: translateY(100%); }
+
+        #bienvenida {
+            position: fixed; inset: 0; background-color: #0f1923;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 200;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .autor-bienvenida {
+            margin-top: 25px;
+            font-size: 18px;
+            color: #ff4655;
+            letter-spacing: 2px;
+            font-weight: 300;
+            text-transform: uppercase;
+        }
+
+        /* --- Ruleta --- */
+        .ruleta-container {
+            width: 100vw; height: 100vh;
+            position: relative;
+            display: none;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        #cinta {
+            display: flex; flex-direction: column; width: 100%;
+            transition: transform 2.5s cubic-bezier(0.15, 0, 0.15, 1);
+        }
+
+        #cinta img {
+            width: 100vw; height: 100vh;
+            object-fit: cover;
+            filter: brightness(0.4);
+        }
+
+        .overlay { position: absolute; z-index: 10; width: 100%; pointer-events: none; text-align: center; }
+
+        #resultado {
+            bottom: 80px; left: 50%; transform: translateX(-50%);
+            font-size: 35px; font-weight: bold;
+            background: rgba(255, 70, 85, 0.9); padding: 10px 40px;
+            border-radius: 4px; display: none;
+            box-shadow: 0 0 30px #ff4655;
+            text-transform: uppercase;
+        }
+
+        #ganador-final {
+            position: fixed; top: 45%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            z-index: 160; text-align: center;
+            display: none; width: 85%;
+            background: rgba(15, 25, 35, 0.95);
+            padding: 50px 20px; border: 4px solid #FFD700;
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.4);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #ganador-final.show { display: block; transform: translate(-50%, -50%) scale(1); }
+
+        #btn-reiniciar {
+            margin-top: 30px; padding: 15px 40px; font-size: 18px;
+            background: #FFD700; color: black; border: none;
+            font-weight: bold; cursor: pointer; pointer-events: auto;
+            text-transform: uppercase;
+        }
+
+        #btn-reiniciar:hover { background: white; transform: scale(1.05); }
+
+        .status-top {
+            top: 20px; left: 20px; text-align: left;
+            font-size: 16px; border-left: 4px solid #ff4655; padding-left: 15px;
+            letter-spacing: 1px;
+        }
+
+        button.principal {
+            padding: 20px 70px; font-size: 26px; background: #ff4655;
+            color: white; border: none; cursor: pointer; font-weight: bold;
+            letter-spacing: 5px; transition: 0.3s;
+            text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        button.principal:hover { background: white; color: #ff4655; transform: translateY(-3px); }
+
+        .animar-flash { animation: flashEffect 0.7s ease-out; }
+        @keyframes flashEffect {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .fakas-text { color: #FFD700; font-size: clamp(18px, 4vw, 28px); margin-bottom: 15px; display: block; }
+        .mapa-text { color: white; font-size: clamp(40px, 10vw, 80px); font-weight: 900; display: block; text-shadow: 4px 4px #000; }
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+
+    <div class="creditos-fixed">
+        creado por PatrickCocain<br>Directamente de la nave
+    </div>
+
+    <div id="shutter-top"></div>
+    <div id="shutter-bottom"></div>
+
+    <div id="bienvenida">
+        <h1 style="letter-spacing: 12px; margin: 0; text-align: center; font-size: clamp(40px, 8vw, 70px);">RULETA DE LA NAVE</h1>
+        <div style="height: 50px;"></div>
+        <button class="principal" onclick="iniciarProceso()">INICIAR</button>
+        <div class="autor-bienvenida">Creado Por: PatrickCocain de la nave</div>
+    </div>
+
+    <div class="overlay status-top">
+        MAPAS RESTANTES: <span id="num-restantes">12</span>
+    </div>
+    
+    <div class="ruleta-container" id="ruleta-ui">
+        <div id="cinta"></div>
+    </div>
+
+    <div class="overlay" id="resultado"></div>
+
+    <div id="ganador-final">
+        <span class="fakas-text">¡SAQUEN SUS FAKAS QUE SALIÓ!</span>
+        <span id="mapa-ganador-nombre" class="mapa-text">MAPA</span>
+        <button id="btn-reiniciar" onclick="reiniciarTodo()">Reiniciar Ruleta</button>
+    </div>
+
+    <script>
+        const listaOriginal = [
+            'Abbys.png', 'Ascent.png', 'Bind.png', 'Brezze.png', 
+            'Corrode.png', 'Fracture.png', 'Haven.png', 'Icebox.png', 
+            'Lotus.png', 'Pearl.png', 'Split.png', 'Sunset.png'
+        ];
+
+        let mapasDisponibles = [...listaOriginal];
+
+        const cinta = document.getElementById('cinta');
+        const resDiv = document.getElementById('resultado');
+        const flashDiv = document.getElementById('flash');
+        const numTxt = document.getElementById('num-restantes');
+        const ganadorDiv = document.getElementById('ganador-final');
+
+        function limpiarNombre(nombre) {
+            return nombre.replace('.png', '').replace('Abbys', 'Abyss').replace('Brezze', 'Breeze').toUpperCase();
+        }
+
+        function actualizarCinta(vueltas = 25) {
+            cinta.innerHTML = '';
+            cinta.style.transition = 'none';
+            cinta.style.transform = 'translateY(0)';
+            cinta.offsetHeight; 
+
+            for (let i = 0; i < vueltas; i++) {
+                mapasDisponibles.forEach(mapa => {
+                    const img = document.createElement('img');
+                    img.src = `./Fotos/${mapa}`;
+                    cinta.appendChild(img);
+                });
+            }
+            numTxt.textContent = mapasDisponibles.length;
+        }
+
+        function iniciarProceso() {
+            const bienvenida = document.getElementById('bienvenida');
+            bienvenida.classList.add('fade-out');
+            document.getElementById('ruleta-ui').style.display = 'block';
+            actualizarCinta();
+
+            setTimeout(() => {
+                document.body.classList.add('abrir');
+                setTimeout(girarRuleta, 1000);
+            }, 600);
+        }
+
+        function girarRuleta() {
+            let esDueloFinal = mapasDisponibles.length === 2;
+            resDiv.style.display = 'none';
+            
+            const tiempoAnimacion = esDueloFinal ? 6000 : 2500;
+            cinta.style.transition = `transform ${tiempoAnimacion}ms cubic-bezier(0.1, 0, 0.1, 1)`;
+
+            const randomIndex = Math.floor(Math.random() * mapasDisponibles.length);
+            const mapaEliminado = mapasDisponibles[randomIndex];
+
+            const vueltas = esDueloFinal ? 20 : 15;
+            const posicionFinalIdx = (vueltas * mapasDisponibles.length) + randomIndex;
+            cinta.style.transform = `translateY(-${posicionFinalIdx * 100}vh)`;
+
+            setTimeout(() => {
+                flashDiv.classList.remove('animar-flash');
+                void flashDiv.offsetWidth;
+                flashDiv.classList.add('animar-flash');
+
+                if (esDueloFinal) {
+                    mapasDisponibles.splice(randomIndex, 1);
+                    mostrarPantallaFinal(mapasDisponibles[0]);
+                } else {
+                    resDiv.innerHTML = `<span style="font-size:12px; display:block">ELIMINADO:</span> ${limpiarNombre(mapaEliminado)}`;
+                    resDiv.style.display = 'block';
+
+                    mapasDisponibles.splice(randomIndex, 1);
+
+                    setTimeout(() => {
+                        actualizarCinta();
+                        girarRuleta();
+                    }, 1500);
+                }
+            }, tiempoAnimacion);
+        }
+
+        function mostrarPantallaFinal(mapaGanador) {
+            actualizarCinta(5);
+            cinta.style.transform = 'translateY(0)';
+            const nombre = limpiarNombre(mapaGanador);
+            document.getElementById('mapa-ganador-nombre').textContent = nombre;
+            
+            setTimeout(() => {
+                ganadorDiv.classList.add('show');
+                flashDiv.style.background = "gold";
+                flashDiv.classList.add('animar-flash');
+            }, 500);
+        }
+<!--Que andai sapiando mi codigo regalon de la coyoma mia -->
+        function reiniciarTodo() {
+            document.body.classList.remove('abrir');
+            setTimeout(() => {
+                ganadorDiv.classList.remove('show');
+                flashDiv.style.background = "white";
+                mapasDisponibles = [...listaOriginal];
+                resDiv.style.display = 'none';
+                actualizarCinta();
+                setTimeout(() => {
+                    document.body.classList.add('abrir');
+                    setTimeout(girarRuleta, 800);
+                }, 500);
+            }, 800);
+        }
+    </script>
+</body>
+</html>
